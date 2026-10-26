@@ -1,0 +1,101 @@
+# Importamos librerías necesarias
+from pyspark.sql import SparkSession, functions as F
+ 
+# Inicializamos la sesión de Spark
+spark = SparkSession.builder.appName('Tarea3').getOrCreate()
+ 
+# Ruta del archivo CSV en HDFS
+file_path = 'hdfs://localhost:9000/Tarea3/rows.csv'
+ 
+# Leemos el archivo CSV
+df = spark.read.format('csv') \
+    .option('header', 'true') \
+    .option('inferSchema', 'true') \
+    .load(file_path)
+ 
+# Mostramos la estructura y los primeros 10 registros
+print("Estructura de los datos")
+df.printSchema()
+ 
+print("Primeros 10 registros")
+df.show(10, truncate=False)
+ 
+# Estadísticas básicas
+print("Estadísticas generales")
+df.summary().show()
+ 
+# Convertimos VALOR a número y las fechas al formato correcto
+df = df.withColumn(
+    'VALOR', F.col('VALOR').cast('double')
+).withColumn(
+    'VIGENCIADESDE',
+    F.to_date(F.col('VIGENCIADESDE'), 'dd/MM/yyyy')
+).withColumn(
+    'VIGENCIAHASTA',
+    F.to_date(F.col('VIGENCIAHASTA'), 'dd/MM/yyyy')
+)
+ 
+# Conservamos registros con valor y fecha válidos
+df = df.filter(
+    F.col('VALOR').isNotNull() &
+    F.col('VIGENCIADESDE').isNotNull()
+)
+ 
+# Extraemos año, mes y semana
+df = df.withColumn('ANIO', F.year('VIGENCIADESDE')) \
+       .withColumn('MES', F.month('VIGENCIADESDE')) \
+       .withColumn('SEMANA', F.weekofyear('VIGENCIADESDE'))
+ 
+# Consulta 1: Valores superiores a 3300 COP
+print("Valores superiores a 3300 COP")
+ 
+valores_altos = df.filter(
+    F.col('VALOR') > 3300
+).select(
+    'VALOR', 'UNIDAD', 'VIGENCIADESDE', 'VIGENCIAHASTA'
+).orderBy(F.col('VALOR').desc())
+ 
+valores_altos.show(20, truncate=False)
+ 
+# Consulta 2: Promedio semanal
+print("Promedio semanal de la tasa de cambio")
+ 
+promedio_semanal = df.groupBy(
+    'ANIO', 'SEMANA'
+).agg(
+    F.round(F.avg('VALOR'), 2).alias('PROMEDIO_SEMANAL')
+).orderBy('ANIO', 'SEMANA')
+ 
+promedio_semanal.show(100, truncate=False)
+ 
+# Consulta 3: Promedio mensual
+print("Promedio mensual de la tasa de cambio")
+ 
+promedio_mensual = df.groupBy(
+    'ANIO', 'MES'
+).agg(
+    F.round(F.avg('VALOR'), 2).alias('PROMEDIO_MENSUAL')
+).orderBy('ANIO', 'MES')
+ 
+promedio_mensual.show(100, truncate=False)
+ 
+# Consulta 4: Meses con promedio mensual superior a 3300 COP
+print("Meses con promedio superior a 3300 COP")
+ 
+meses_superiores = promedio_mensual.filter(
+    F.col('PROMEDIO_MENSUAL') > 3300
+).orderBy(F.col('PROMEDIO_MENSUAL').desc())
+ 
+meses_superiores.show(100, truncate=False)
+ 
+# Consulta 5: Los 10 meses con el promedio más alto
+print("Los 10 meses con el promedio más alto")
+ 
+promedio_mensual.orderBy(
+    F.col('PROMEDIO_MENSUAL').desc()
+).show(10, truncate=False)
+ 
+# Finalizamos la sesión de Spark
+spark.stop()
+
+has context menu
