@@ -1,2 +1,2 @@
 # BIG-DATA-Tarea-3-
-Análisis de casos positivos de COVID-19 por barrio, comuna y servicio hospitalario.
+El análisis de la tasa de cambio permitió identificar noviembre de 2022 como uno de los periodos de mayor valor promedio del dólar frente al peso colombiano.
